@@ -189,7 +189,7 @@ with st.sidebar:
     st.markdown('<div class="sb-section-label">AI settings</div>', unsafe_allow_html=True)
     provider = st.selectbox("LLM provider", ["Groq (free)", "Gemini"])
     key_name = "GROQ_API_KEY" if provider.startswith("Groq") else "GEMINI_API_KEY"
-   api_key = st.secrets.get(key_name, os.getenv(key_name, ""))
+    api_key = st.secrets.get(key_name, os.getenv(key_name, ""))
     st.markdown("---")
     st.markdown('<div class="sb-section-label">Personalise your session</div>', unsafe_allow_html=True)
     version = st.selectbox("Prompt style", list(PROMPTS.keys()), index=3)
