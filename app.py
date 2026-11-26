@@ -6,7 +6,7 @@ import streamlit as st
 from sentence_transformers import SentenceTransformer
 from google import genai
 
-st.set_page_config(page_title="SyllaBuddy", page_icon="📚")
+st.set_page_config(page_title="SyllaBuddy | Study smarter", page_icon="📚", layout="wide")
 
 # If Google retires this model, change the name here (the error message tells you the new one)
 MODEL_NAME = "gemini-3.8-flash"
@@ -143,37 +143,110 @@ def ask_any(provider, prompt, api_key):
     return ask_llm(prompt, api_key)
 
 # ---------- 5. CHATBOT UI ----------
-st.title("📚 SyllaBuddy")
-st.caption(
-    "A RAG chatbot that knows my semester syllabus and Python assignments. "
-    "Try: *What is in Unit 4 of Operating Systems?* | *Which assignment covers NumPy?* | "
-    "*Which subjects do I have?*"
-)
 
-provider = st.sidebar.selectbox("LLM provider", ["Groq (free)", "Gemini"])
-key_name = "GROQ_API_KEY" if provider.startswith("Groq") else "GEMINI_API_KEY"
-api_key = st.sidebar.text_input(f"{provider.split()[0]} API key", type="password", value=os.getenv(key_name, ""))
-version = st.sidebar.selectbox("Prompt version", list(PROMPTS.keys()), index=3)
-mode = st.sidebar.radio("Mode", list(MODES.keys()))
-k = st.sidebar.slider("Chunks to retrieve (k)", 1, 6, 4)
-if st.sidebar.button("Clear chat"):
-    st.session_state.messages = []
+# Frontend-only styling: the RAG pipeline and provider functions above remain unchanged.
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+:root { --sb-bg:#0b1020; --sb-panel:#111a2e; --sb-line:rgba(148,163,184,.16); --sb-muted:#9aa9c2; --sb-text:#edf3ff; --sb-accent:#8b7cff; --sb-accent2:#53c7e8; }
+.stApp { background: radial-gradient(ellipse at 75% -10%, rgba(91,78,190,.20), transparent 38%), var(--sb-bg); color:var(--sb-text); }
+html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
+[data-testid="stHeader"] { background:transparent; }
+[data-testid="stSidebar"] { background:linear-gradient(180deg,#10182b 0%,#0d1425 100%); border-right:1px solid var(--sb-line); }
+[data-testid="stSidebar"] > div { padding-top:1.5rem; }
+.block-container { max-width:1120px; padding-top:2.2rem; padding-bottom:3rem; }
+.sb-brand { display:flex; align-items:center; gap:14px; margin:0 0 1.5rem 0; }
+.sb-logo { width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; background:linear-gradient(135deg,#7567f8,#36b9d7); box-shadow:0 8px 28px rgba(103,91,238,.25); }
+.sb-brand h1 { font-family:'Manrope',sans-serif; font-size:30px; line-height:1.1; margin:0; color:#f6f8ff; letter-spacing:-1.2px; }
+.sb-brand p { margin:5px 0 0 0; color:var(--sb-muted); font-size:13px; }
+.sb-hero { padding:26px 28px; border:1px solid rgba(139,124,255,.24); border-radius:24px; background:linear-gradient(115deg,rgba(36,47,83,.92),rgba(20,32,55,.88) 55%,rgba(33,55,78,.82)); box-shadow:0 18px 55px rgba(0,0,0,.16); margin-bottom:24px; }
+.sb-eyebrow { color:#a9a0ff; text-transform:uppercase; letter-spacing:1.8px; font-size:11px; font-weight:700; margin-bottom:10px; }
+.sb-hero h2 { font-family:'Manrope',sans-serif; font-size:29px; line-height:1.25; margin:0 0 9px 0; color:#f6f8ff; letter-spacing:-.8px; }
+.sb-hero p { color:#b9c6dc; margin:0; font-size:14px; line-height:1.65; max-width:700px; }
+.sb-pill { display:inline-block; border:1px solid rgba(120,220,204,.25); background:rgba(52,211,153,.08); color:#80e2c4; border-radius:99px; padding:5px 10px; font-size:11px; font-weight:600; margin-top:16px; }
+.sb-section-label { color:#aab7cd; text-transform:uppercase; letter-spacing:1.5px; font-size:11px; font-weight:700; margin:18px 0 10px 0; }
+.sb-card { height:100%; min-height:112px; border:1px solid var(--sb-line); border-radius:17px; background:linear-gradient(145deg,rgba(24,36,59,.95),rgba(17,26,44,.95)); padding:17px 18px; }
+.sb-card .emoji { font-size:21px; margin-bottom:10px; }
+.sb-card h4 { color:#eef3ff; font-size:14px; margin:0 0 5px 0; font-weight:700; }
+.sb-card p { color:#9eacc3; font-size:12px; line-height:1.5; margin:0; }
+[data-testid="stChatMessage"] { background:rgba(20,30,50,.72); border:1px solid var(--sb-line); border-radius:18px; padding:17px 19px; margin-bottom:13px; }
+[data-testid="stChatMessage"] p { line-height:1.7; }
+[data-testid="stChatInput"] { border:1px solid rgba(139,124,255,.35); border-radius:18px; background:#121c31; box-shadow:0 8px 30px rgba(0,0,0,.18); }
+[data-testid="stChatInput"] textarea { color:#f1f5ff !important; }
+.stButton > button { border-radius:12px; border:1px solid rgba(139,124,255,.28); background:rgba(119,105,238,.10); color:#dcd8ff; font-weight:600; transition:all .18s ease; }
+.stButton > button:hover { border-color:#8b7cff; background:rgba(139,124,255,.20); color:white; transform:translateY(-1px); }
+.stSelectbox > div > div, .stTextInput > div > div, .stSlider > div { border-radius:11px; }
+[data-testid="stExpander"] { border:1px solid var(--sb-line); border-radius:13px; background:rgba(15,24,42,.55); }
+hr { border-color:var(--sb-line); }
+.sb-footer { color:#71819c; text-align:center; font-size:11px; margin-top:32px; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#aab7cd; }
+</style>
+""", unsafe_allow_html=True)
+
+# Sidebar branding and controls
+with st.sidebar:
+    st.markdown("<div class='sb-brand'><div class='sb-logo'>📚</div><div><h1>SyllaBuddy</h1><p>Your semester, made simpler.</p></div></div>", unsafe_allow_html=True)
+    st.markdown('<div class="sb-section-label">AI settings</div>', unsafe_allow_html=True)
+    provider = st.selectbox("LLM provider", ["Groq (free)", "Gemini"])
+    key_name = "GROQ_API_KEY" if provider.startswith("Groq") else "GEMINI_API_KEY"
+   api_key = st.secrets.get(key_name, os.getenv(key_name, ""))
+    st.markdown("---")
+    st.markdown('<div class="sb-section-label">Personalise your session</div>', unsafe_allow_html=True)
+    version = st.selectbox("Prompt style", list(PROMPTS.keys()), index=3)
+    mode = st.radio("Learning mode", list(MODES.keys()), horizontal=False)
+    k = st.slider("Retrieved context chunks", 1, 6, 4)
+    st.markdown("---")
+    if st.button("↻  Clear conversation", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.pop("suggested_question", None)
+        st.rerun()
+    st.markdown('<div class="sb-footer">Built for curious minds · Powered by RAG</div>', unsafe_allow_html=True)
 
 model, chunks, vectors = build_index()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Main header
+st.markdown("""
+<div class='sb-hero'>
+  <div class='sb-eyebrow'>✦ Your personal academic sidekick</div>
+  <h2>Study smarter. Understand deeper.</h2>
+  <p>Ask questions about your semester syllabus and assignments. SyllaBuddy finds relevant material from your notes and turns it into clear, helpful answers.</p>
+  <span class='sb-pill'>● Knowledge base connected</span>
+</div>
+""", unsafe_allow_html=True)
+
+# Suggested prompts are shown only before the first message.
+if not st.session_state.messages:
+    st.markdown("<div class='sb-section-label'>Not sure where to start? Try asking</div>", unsafe_allow_html=True)
+    suggestions = [
+        ("🧠", "Explore a unit", "What is in Unit 4 of Operating Systems?"),
+        ("🐍", "Python assignments", "Which assignment covers NumPy?"),
+        ("📖", "My subjects", "Which subjects do I have?"),
+        ("🎯", "Test my knowledge", "Create a quiz on Computer Networks."),
+    ]
+    c1, c2 = st.columns(2)
+    for idx, (emoji, title, prompt_text) in enumerate(suggestions):
+        with (c1 if idx % 2 == 0 else c2):
+            st.markdown(f"<div class='sb-card'><div class='emoji'>{emoji}</div><h4>{title}</h4><p>{prompt_text}</p></div>", unsafe_allow_html=True)
+            if st.button("Ask this  →", key=f"suggest_{idx}", use_container_width=True):
+                st.session_state.suggested_question = prompt_text
+                st.rerun()
+
+# Render conversation history
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.write(m["content"])
         if m.get("sources"):
-            with st.expander("Retrieved chunks"):
+            with st.expander("📎 View retrieved context"):
                 for i, (c, sc) in enumerate(m["sources"], 1):
-                    st.markdown(f"**chunk {i}** (similarity {sc:.2f})")
+                    st.markdown(f"**Retrieved passage {i}** · Similarity `{sc:.2f}`")
                     st.write(c)
 
-question = st.chat_input("Ask about your syllabus or assignments")
+question = st.chat_input("Ask SyllaBuddy about your syllabus or assignments…")
+if not question and st.session_state.get("suggested_question"):
+    question = st.session_state.pop("suggested_question")
 
 if question:
     st.session_state.messages.append({"role": "user", "content": question})
@@ -199,11 +272,13 @@ if question:
             except Exception as e:
                 answer = f"Error calling {provider}: {e}"
         st.write(answer)
-        with st.expander("Retrieved chunks"):
+        with st.expander("📎 View retrieved context"):
             for i, (c, sc) in enumerate(results, 1):
-                st.markdown(f"**chunk {i}** (similarity {sc:.2f})")
+                st.markdown(f"**Retrieved passage {i}** · Similarity `{sc:.2f}`")
                 st.write(c)
-        with st.expander("Final prompt sent to the LLM"):
+        with st.expander("⚙️ View final prompt sent to the LLM"):
             st.code(prompt)
 
     st.session_state.messages.append({"role": "assistant", "content": answer, "sources": results})
+
+st.markdown("<div class='sb-footer'>SyllaBuddy · Learn at your own pace</div>", unsafe_allow_html=True)
